@@ -1,4 +1,9 @@
 * Peak fitting code
+
+[[./rplot.png]]
+
+[[./ramanplot.png]]
+
 #+BEGIN_SRC python
 import numpy as np
 import matplotlib.pyplot as plt
@@ -189,9 +194,9 @@ if step == 4:
 : Height = 154.4
 : Height = 113.2
 
-* Fit plotting code (Johns Data)
+* Multiple fit plotting
 
-[[./john-data/combined-plot.png]]
+[[./combined-plot.png]]
 
 #+BEGIN_SRC python
 import numpy as np
