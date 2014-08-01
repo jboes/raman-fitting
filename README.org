@@ -1,0 +1,10 @@
+* Purpose
+This code was designed to fit Raman spectra data to assist experimental members of the Kitchin group with their analysis. This is done through a double Gaussian peak fitting: Two Gaussian distributions centered around the same mean value for each peak. So far, this has effectively captured the characteristics of all Raman data I have encountered. Baseline subtraction is incorporated as well.
+
+* TODO
+- Design intuitive initial guess code based on maximum values.
+- Make code more robust for wider range of wavenumbers and intensities.
+- Interactive plot for fitting baseline and Gaussian initial guesses. 
+
+
+Suggested improvements are welcome.
