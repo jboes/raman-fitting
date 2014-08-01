@@ -1,17 +1,3 @@
-# Raman Analysis
-* To Plot One Raw Data
-#+BEGIN_SRC python :results silent
-import numpy as np
-import matplotlib.pyplot as plt
-
-S, I = np.loadtxt('rawdata.txt', usecols=(0,1), unpack=True)
-
-plt.plot(S,I)
-plt.xlabel('Raman shift (cm$^{-1}$)')
-plt.ylabel('Intensity (counts)')
-plt.savefig('rplot.png',dpi=72)
-#+END_SRC
-
 * Peak fitting code
 #+BEGIN_SRC python
 import numpy as np
@@ -21,22 +7,7 @@ from scipy.optimize import curve_fit
 import os
 
 # Put the name of your data file here
-#data_file_name = 'Cs-fe-100/CP-100-Cs-fe-VF2-D1-07-29-14_3.txt'
-#data_file_name = 'Cs-fe-100/CP-100-Cs-fe-VF5-D1-07-29-14_4.txt'
-#data_file_name = 'Cs-fe-trials-10/CP-10-Cs-fe-VF2-D1-07-28-14_3.txt'
-#data_file_name = 'Cs-fe-trials-10/CP-10-Cs-fe-VF2-D1-07-29-14_4.txt'
-#data_file_name = 'Cs-fe-trials-10/CP-10-Cs-fe-VF5-D1-07-28-14_7.txt'
-#data_file_name = 'Cs-fe-trials-10/CP-10-Cs-fe-VF5-D1-07-29-14_2.txt'
-#data_file_name = 'Cs-stock-trials-10/CP-10-Cs-stock2-VF2-D1-07-29-14_2.txt'
-#data_file_name = 'Cs-stock-trials-10/CP-10-Cs-stock2-VF5-D1-07-29-14_3.txt'
-#data_file_name = 'Cs-stock-trials-10/CP-10-Cs-stock-VF2-D1-07-29-14_3.txt'
-#data_file_name = 'Cs-stock-trials-10/CP-10-Cs-stock-VF5-D1-07-29-14_2.txt'
-#data_file_name = 'Cs-stock-trials-10/CP-10-Cs-stock-VF5-D1-1160s-07-27-14_3.txt'
-
-data_file_name = ['john-data/Ni-Li-3-Fefree-Raman-750mV-07-24-14.txt',
-                  'john-data/Ni-Li-2-Fefree-Raman-750mV-07-24-14.txt',
-                  'john-data/Ni-Cs-2-Fefree-Raman-750mV-07-24-14.txt',
-                  'john-data/Ni-Cs-1-Fefree-Raman-750mV-07-24-14.txt']
+data_file_name = ['rawdata.txt']
 
 # Indicate which file you would like to fit too:
 dfile = 0
@@ -290,28 +261,6 @@ plt.xlim(250,750)
 plt.ylim(0,300)
 plt.xlabel('Raman shift (cm$^{-1}$)')
 plt.ylabel('Intensity (counts)')
-plt.savefig('john-data/combined-plot.png')
+plt.savefig('combined-plot.png')
 plt.show()
 #+END_SRC
-
-* To Plot Two Raw Data
-#+BEGIN_SRC python
-import numpy as np
-import matplotlib.pyplot as plt
-
-w1, i1 = np.loadtxt('raw/CP-10-Cs-stock-VF5-D1-1160s-07-27-14_3.txt', usecols=(0,1), unpack=True)
-w2, i2 = np.loadtxt('raw/CP-10-Cs-fe-VF2-D1-07-28-14_3.txt', usecols=(0,1), unpack=True)
-
-
-plt.plot(w1, i1,w2,i2)
-plt.xlabel('Raman shift (cm$^{-1}$)')
-plt.ylabel('Intensity (counts)')
-plt.legend(['Co-oxide_CsOH_stock','Co-oxide_CsOH_Fe250ppm'],loc='best')
-plt.axis([400,700,0,50])# x-axis and y-axis
-plt.savefig('ramanplot/Compare-Cs-Stock-fe-07-28-14.png')
-plt.show()
-
-#+END_SRC
-
-#+RESULTS:
-
