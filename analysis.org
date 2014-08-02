@@ -21,7 +21,7 @@ dfile = 0
 # step = 3: Evaluate the fit
 # step = 4: View and save the final figure
 step = 4
-output = True
+output = False
 
 # Step 1
 # Choose the intensities to include in the base line fit
@@ -134,7 +134,7 @@ if step == 4:
     area1 = -np.trapz(S, peak1)
     area2 = -np.trapz(S, peak2)
 
-    savefile = data_file_name[dfile].strip('.txt')
+    savefile = data_file_name[dfile].rstrip('txt')
     
     plt.figure()
     plt.plot(S, I + blfit(S),label='data')
@@ -152,7 +152,7 @@ if step == 4:
 
     plt.xlabel('Raman shift (cm$^{-1}$)')
     plt.ylabel('Intensity (counts)')
-    plt.savefig(savefile + '.png')
+    plt.savefig(savefile + 'png')
     plt.show()
 
     print 'These are the diagnols of a 10x10 matrix of the covarience of the 10 fitting parameters.'
@@ -181,7 +181,7 @@ if step == 4:
     print 'Area = {0:1.1f}'.format(area2)
 
     if output:
-        filename = data_file_name[dfile].strip('.txt') + '.fit'
+        filename = savefile + 'fit'
 
         dn = ''
         bln = ''
