@@ -9,10 +9,10 @@ from scipy.special import erf
 from scipy.optimize import curve_fit
 import os
 
-# Put the name of your data file here
+# Put the name of your data files here [list]
 data_file_name = ['testdata.txt']
 
-# Indicate which file you would like to fit too:
+# Indicate which file you would like to fit too [int]
 dfile = 0
 
 # IMPORTANT: This needs to be set to whichever fitting step you are working on
@@ -26,28 +26,28 @@ output = False
 # Step 1
 # Choose the intensities to include in the base line fit
 # Values < low and > high are included
-low, high = 360,   675
+low, high = 360, 675
 
 # Step 2
 # These are initial guesses of the tunning parameters for the Gaussian fits.
-#    Peak #:   1     2
-parguess = (   475,  557,        # Peak center
-               50,   100,        # Amplitude of peak 1
-               50,   60,         # Amplitude of peak 2
-               10,   5,          # Standard deviation of peak 1
-               10,   5)          # Standard deviation of peak 2
+#    Peak #: 1    2
+parguess = ( 475, 557,       # Peak center
+             50, 100,        # Amplitude of peak 1
+             50, 60,         # Amplitude of peak 2
+             10, 5,          # Standard deviation of peak 1
+             10, 5)          # Standard deviation of peak 2
 
 
 # ---------- NOTHING BELOW THIS LINE SHOULD NEED TO BE CHANGED -------------------
 # This unpacks the data from the text file.
-S,I = np.loadtxt(data_file_name[dfile], usecols=(0,1), unpack=True)
+S,I = np.loadtxt(data_file_name[dfile], usecols=(0, 1), unpack=True)
 
 # Seperate the data points to be used for fitting the baseline
-xbl = np.append(S[(S < low)],S[(S > high)])
-ybl = np.append(I[(S < low)],I[(S > high)])
+xbl = np.append(S[(S < low)], S[(S > high)])
+ybl = np.append(I[(S < low)], I[(S > high)])
 
 # Fits a line to the base line points
-blpars = np.polyfit(xbl,ybl,1)
+blpars = np.polyfit(xbl, ybl, 1)
 blfit = np.poly1d(blpars)
 
 if step != 1 and step != 2 and step != 3 and step != 4:
@@ -57,7 +57,7 @@ if step != 1 and step != 2 and step != 3 and step != 4:
 if step == 1:
     plt.figure()
     plt.plot(S, I, label='data')
-    plt.plot(S, blfit(S),'r-',lw=2, label='base line')
+    plt.plot(S, blfit(S), 'r-', lw=2, label='base line')
     plt.xlabel('Raman shift (cm$^{-1}$)')
     plt.ylabel('Intensity (counts)')
     plt.legend(loc='best')
@@ -68,12 +68,12 @@ if step == 1:
 # Subtracts the baseline from the intensities
 I -= blfit(S)
 
-# Gaussians will only be fit the the data now used for the baseline
+# Gaussians will only be fit the the data not used for the baseline
 nS = S[(S > low) & (S < high)]
 nI = I[(S > low) & (S < high)]
 
 # These are functions which define the types of fit which you could implement
-# Currently, the code only utilizes gaussians, but we can make other options available if necessary
+# Currently, the code only utilizes Gaussians
 # ----------------------------------------------------------------------
 def gaussian(x, pars):
     A = pars[0]    # amplitude
@@ -92,10 +92,10 @@ def sum_gaussian(x, *p):
 # Step 2: Fitting the curves to the data
 if step == 2:
     plt.figure()
-    plt.plot(nS, nI,'b-',label='Data')
-    plt.plot(S,sum_gaussian(S, *parguess),'g--',lw=3,label='Initial guess')
-    plt.xlim(low,high)
-    plt.ylim(0,max(nI)+2)
+    plt.plot(nS, nI, 'b-', label='Data')
+    plt.plot(S, sum_gaussian(S, *parguess), 'g--', lw=3, label='Initial guess')
+    plt.xlim(low, high)
+    plt.ylim(0, max(nI) + 2)
     plt.xlabel('Raman shift (cm$^{-1}$)')
     plt.ylabel('Intensity (counts)')
     plt.legend(loc='best')
@@ -106,18 +106,18 @@ if step == 2:
 # This is a multivaraible curve fitting program which attempts to optimize the fitting parameters
 popt, pcov = curve_fit(sum_gaussian, S, I, parguess)
 
-peak1 = gaussian(S, [popt[2],popt[0],popt[6]]) + gaussian(S, [popt[3],popt[0],popt[7]])
-peak2 = gaussian(S, [popt[4],popt[1],popt[8]]) + gaussian(S, [popt[5],popt[1],popt[9]])
+peak1 = gaussian(S, [popt[2], popt[0], popt[6]]) + gaussian(S, [popt[3], popt[0], popt[7]])
+peak2 = gaussian(S, [popt[4], popt[1], popt[8]]) + gaussian(S, [popt[5], popt[1], popt[9]])
 
 # Step 3: Evaluate the fit
 if step == 3:
     plt.figure()
-    plt.plot(nS, nI,'b-',label='Data')
-    plt.plot(S,sum_gaussian(S, *popt),'r-',lw=3,label='Final Fit')
-    plt.plot(S,peak1,'m-',lw=3,label='Fit for peak 1')
-    plt.plot(S,gaussian(S, [popt[4],popt[1],popt[8]])+gaussian(S, [popt[5],popt[1],popt[9]]),'c-',lw=3,label='Fit for peak 2')
-    plt.xlim(low,high)
-    plt.ylim(0,max(nI)+2)
+    plt.plot(nS, nI, 'b-', label='Data')
+    plt.plot(S, sum_gaussian(S, *popt), 'r-', lw=3, label='Final Fit')
+    plt.plot(S, peak1, 'm-', lw=3, label='Fit for peak 1')
+    plt.plot(S, gaussian(S, [popt[4], popt[1], popt[8]]) + gaussian(S, [popt[5], popt[1], popt[9]]), 'c-', lw=3, label='Fit for peak 2')
+    plt.xlim(low, high)
+    plt.ylim(0, max(nI) + 2)
     plt.xlabel('Raman shift (cm$^{-1}$)')
     plt.ylabel('Intensity (counts)')
     plt.legend(loc='best')
@@ -128,8 +128,8 @@ if step == 3:
 
 # Step 4: A summary of the resulting fit
 if step == 4:
-    ypeak1 = popt[2]+popt[3]+blfit(popt[0])
-    ypeak2 = popt[4]+popt[5]+blfit(popt[1])
+    ypeak1 = popt[2] + popt[3] + blfit(popt[0])
+    ypeak2 = popt[4] + popt[5] + blfit(popt[1])
 
     area1 = -np.trapz(S, peak1)
     area2 = -np.trapz(S, peak2)
@@ -137,8 +137,8 @@ if step == 4:
     savefile = data_file_name[dfile].rstrip('txt')
     
     plt.figure()
-    plt.plot(S, I + blfit(S),label='data')
-    plt.plot(S,sum_gaussian(S, *popt) + blfit(S),'r-',lw=3,label='fit')
+    plt.plot(S, I + blfit(S), label='data')
+    plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
 
     # Annotation code is choppy and doesnt print legibly on large figures, to be fixed
     #plt.annotate('Peak 1', xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-1))
@@ -166,16 +166,16 @@ if step == 4:
 
     perr = np.sqrt(np.diag(pcov))
  
-    pk1err = np.sqrt(perr[2]**2. + perr[3]**2 + 2*pcov[2][3])
-    pk2err = np.sqrt(perr[4]**2. + perr[5]**2 + 2*pcov[4][5])
+    pk1err = np.sqrt(perr[2]**2. + perr[3]**2 + 2 * pcov[2][3])
+    pk2err = np.sqrt(perr[4]**2. + perr[5]**2 + 2 * pcov[4][5])
 
     print 'Results'
     print '======='
-    print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[0],perr[0])
-    print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[1],perr[1])
+    print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[0], perr[0])
+    print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[1], perr[1])
 
-    print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak1,pk1err)
-    print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak2,pk2err)
+    print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak1, pk1err)
+    print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak2, pk2err)
 
     print 'Area = {0:1.1f}'.format(area1)
     print 'Area = {0:1.1f}'.format(area2)
@@ -190,8 +190,8 @@ if step == 4:
         for parameter in blpars:
             bln += '{0} '.format(parameter)
 
-        f = open(filename,'w')
-        f.write(dn+'\n')
+        f = open(filename, 'w')
+        f.write(dn + '\n')
         f.write(bln)
         f.close()
 #+END_SRC
