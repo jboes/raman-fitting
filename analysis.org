@@ -9,198 +9,254 @@ from scipy.special import erf
 from scipy.optimize import curve_fit
 import os
 
-# Put the name of your data files here [list]
-data_file_name = ['testdata.txt']
+def ramanfit(filename,
+             cntr=(470, 560),
+             amp1=(20, 20),
+             amp2=(20, 20),
+             std1=(10, 5),
+             std2=(10, 5),
+             drange=None,
+             output=True,
+             step=4):
 
-# Indicate which file you would like to fit too [int]
-dfile = 0
+    # step = 1: Fittings the baseline
+    # step = 2: Choosing initial guess for peaks
+    # step = 3: Evaluate the fit
+    # step = 4: View and save the final figure
 
-# IMPORTANT: This needs to be set to whichever fitting step you are working on
-# step = 1: Fittings the baseline
-# step = 2: Choosing initial guess for peaks
-# step = 3: Evaluate the fit
-# step = 4: View and save the final figure
-step = 4
-output = False
+    # This unpacks the data from the text file.
+    S, I = np.loadtxt(filename, usecols=(0, 1), unpack=True)
 
-# Step 1
-# Choose the intensities to include in the base line fit
-# Values < low and > high are included
-low, high = 360, 675
+    if drange == None:
+        drange = [min(S), max(S)]
 
-# Step 2
-# These are initial guesses of the tunning parameters for the Gaussian fits.
-#    Peak #: 1    2
-parguess = ( 475, 557,       # Peak center
-             50, 100,        # Amplitude of peak 1
-             50, 60,         # Amplitude of peak 2
-             10, 5,          # Standard deviation of peak 1
-             10, 5)          # Standard deviation of peak 2
+    # Define the low and high regions for baseline sampling
+    dx = 80.
+    low = drange[0] + dx
+    high = drange[1] - dx
+
+    # Seperate the data points to be used for fitting the baseline
+    xbl = np.append(S[(S < low)], S[(S > high)])
+    ybl = np.append(I[(S < low)], I[(S > high)])
+
+    # Fits a line to the base line points
+    blpars = np.polyfit(xbl, ybl, 1)
+    blfit = np.poly1d(blpars)
 
 
-# ---------- NOTHING BELOW THIS LINE SHOULD NEED TO BE CHANGED -------------------
-# This unpacks the data from the text file.
-S,I = np.loadtxt(data_file_name[dfile], usecols=(0, 1), unpack=True)
+    if step != 1 and step != 2 and step != 3 and step != 4:
+        print 'Set step = 1, 2, 3, or 4 to continue'
 
-# Seperate the data points to be used for fitting the baseline
-xbl = np.append(S[(S < low)], S[(S > high)])
-ybl = np.append(I[(S < low)], I[(S > high)])
+    # Step 1: Choose low and high values for a satisfactory baseline
+    if step == 1:
+        plt.figure()
+        plt.plot(S, I, label='data')
+        plt.plot(S, blfit(S), 'r-', lw=2, label='base line')
+        plt.xlabel('Raman shift (cm$^{-1}$)')
+        plt.ylabel('Intensity (counts)')
+        plt.legend(loc='best')
+        plt.show()
+        print 'When you are satisfied with the fit of the base line, set step = 2'
+        exit()
 
-# Fits a line to the base line points
-blpars = np.polyfit(xbl, ybl, 1)
-blfit = np.poly1d(blpars)
+    # Subtracts the baseline from the intensities
+    I -= blfit(S)
 
-if step != 1 and step != 2 and step != 3 and step != 4:
-    print 'Set step = 1, 2, 3, or 4 to continue'
+    '''
+    # An attempt to find the derivatives based on finitie difference
+    # and use them as starting guesses for fitting params. Needs work.
 
-# Step 1: Choose low and high values for a satisfactory baseline
-if step == 1:
-    plt.figure()
-    plt.plot(S, I, label='data')
-    plt.plot(S, blfit(S), 'r-', lw=2, label='base line')
-    plt.xlabel('Raman shift (cm$^{-1}$)')
-    plt.ylabel('Intensity (counts)')
-    plt.legend(loc='best')
-    plt.show()
-    print 'When you are satisfied with the fit of the base line, set step = 2'
-    exit()
+    dS = S[(S > dlow) & (S < dhigh)]
+    dI = I[(S > dlow) & (S < dhigh)]
 
-# Subtracts the baseline from the intensities
-I -= blfit(S)
+    avg = []
+    for x in dS:
 
-# Gaussians will only be fit the the data not used for the baseline
-nS = S[(S > low) & (S < high)]
-nI = I[(S > low) & (S < high)]
+        itr = noise
+        avg.append(np.average(dI[(dS > x - itr) & (dS < x + itr)]))
 
-# These are functions which define the types of fit which you could implement
-# Currently, the code only utilizes Gaussians
-# ----------------------------------------------------------------------
-def gaussian(x, pars):
-    A = pars[0]    # amplitude
-    mu = pars[1]   # means
-    sig = pars[2]  # std dev
-    return A * np.exp((-(x - mu)**2.) / ((2*sig)**2.))
+    # 2-point finite difference method to calculate the derivative
+    dyf = [0.0] * len(dS)
+    for i in range(len(avg) - 1):
+        dyf[i] = (avg[i+1] - avg[i])/(dS[i+1] - dS[i])
+        #set last element by backwards difference
+    dyf[-1] = (avg[-1] - avg[-2])/(dS[-1] - dS[-2])
+    dyf = np.array(dyf) * noise
 
-def sum_gaussian(x, *p):    
-    g1 = gaussian(x, [p[2], p[0], p[6]])
-    g2 = gaussian(x, [p[3], p[0], p[7]])
-    g3 = gaussian(x, [p[4], p[1], p[8]])
-    g4 = gaussian(x, [p[5], p[1], p[9]])
-    return g1 + g2 + g3 + g4
-# ----------------------------------------------------------------------
+    dyavg = []
+    for x in dS:
 
-# Step 2: Fitting the curves to the data
-if step == 2:
-    plt.figure()
-    plt.plot(nS, nI, 'b-', label='Data')
-    plt.plot(S, sum_gaussian(S, *parguess), 'g--', lw=3, label='Initial guess')
-    plt.xlim(low, high)
-    plt.ylim(0, max(nI) + 2)
-    plt.xlabel('Raman shift (cm$^{-1}$)')
-    plt.ylabel('Intensity (counts)')
-    plt.legend(loc='best')
-    plt.show()
-    print 'Once the initial guess looks reasonable, set step = 3'
-    exit()
+        itr = noise
+        dyavg.append(abs(np.average(dyf[(dS > x - itr) & (dS < x + itr)])))
 
-# This is a multivaraible curve fitting program which attempts to optimize the fitting parameters
-popt, pcov = curve_fit(sum_gaussian, S, I, parguess)
+    dyavg = np.array(dyavg)
 
-peak1 = gaussian(S, [popt[2], popt[0], popt[6]]) + gaussian(S, [popt[3], popt[0], popt[7]])
-peak2 = gaussian(S, [popt[4], popt[1], popt[8]]) + gaussian(S, [popt[5], popt[1], popt[9]])
+    der = dS[(dyavg < 0.2)]
+    print der - der[0]
+    '''
 
-# Step 3: Evaluate the fit
-if step == 3:
-    plt.figure()
-    plt.plot(nS, nI, 'b-', label='Data')
-    plt.plot(S, sum_gaussian(S, *popt), 'r-', lw=3, label='Final Fit')
-    plt.plot(S, peak1, 'm-', lw=3, label='Fit for peak 1')
-    plt.plot(S, gaussian(S, [popt[4], popt[1], popt[8]]) + gaussian(S, [popt[5], popt[1], popt[9]]), 'c-', lw=3, label='Fit for peak 2')
-    plt.xlim(low, high)
-    plt.ylim(0, max(nI) + 2)
-    plt.xlabel('Raman shift (cm$^{-1}$)')
-    plt.ylabel('Intensity (counts)')
-    plt.legend(loc='best')
-    plt.show()
-    print 'When you are satisfied with the peak fit, set step = 3'
-    print 'else, return to step 2 and choose new fitting parameters'
-    exit()
+    # Gaussians will only be fit the the data not used for the baseline
+    nS = S[(S > low) & (S < high)]
+    nI = I[(S > low) & (S < high)]
 
-# Step 4: A summary of the resulting fit
-if step == 4:
-    ypeak1 = popt[2] + popt[3] + blfit(popt[0])
-    ypeak2 = popt[4] + popt[5] + blfit(popt[1])
+    # These are functions which define the types of fit which you could implement
+    # Currently, the code only utilizes Gaussians
+    # ----------------------------------------------------------------------
+    def gaussian(x, pars):
+        A = pars[0]    # amplitude
+        mu = pars[1]   # means
+        sig = pars[2]  # std dev
+        return A * np.exp((-(x - mu)**2.) / ((2*sig)**2.))
 
-    area1 = -np.trapz(S, peak1)
-    area2 = -np.trapz(S, peak2)
+    def sum_gaussian(x, *p):
+        g1 = gaussian(x, [p[2], p[0], p[6]])
+        g2 = gaussian(x, [p[3], p[0], p[7]])
+        g3 = gaussian(x, [p[4], p[1], p[8]])
+        g4 = gaussian(x, [p[5], p[1], p[9]])
+        return g1 + g2 + g3 + g4
+    # ----------------------------------------------------------------------
 
-    savefile = data_file_name[dfile].rstrip('txt')
+    # These are initial guesses of the tuning parameters for the Gaussian fits.
+    #    Peak #: 1    2
+    parguess = (cntr[0], cntr[1],       # Peak center
+                amp1[0], amp1[1],       # Amplitude of peak 1
+                amp2[0], amp2[1],       # Amplitude of peak 2
+                std1[0], std1[1],       # Standard deviation of peak 1
+                std2[0], std2[1])       # Standard deviation of peak 2
+
+    # Step 2: Fitting the curves to the data
+    if step == 2:
+        plt.figure()
+        plt.plot(nS, nI, 'b-', label='Data')
+        plt.plot(S, sum_gaussian(S, *parguess), 'g--', lw=3, label='Initial guess')
+        plt.xlim(drange[0], drange[1])
+        plt.ylim(0, max(nI) + 2)
+        plt.xlabel('Raman shift (cm$^{-1}$)')
+        plt.ylabel('Intensity (counts)')
+        plt.legend(loc='best')
+        plt.show()
+        print 'Once the initial guess looks reasonable, set step = 3'
+        exit()
+
+    # This is a multivaraible curve fitting program which attempts to optimize the fitting parameters
+    popt, pcov = curve_fit(sum_gaussian, S, I, parguess)
+
+    peak1 = gaussian(S, [popt[2], popt[0], popt[6]]) + gaussian(S, [popt[3], popt[0], popt[7]])
+    peak2 = gaussian(S, [popt[4], popt[1], popt[8]]) + gaussian(S, [popt[5], popt[1], popt[9]])
+
+    # Step 3: Evaluate the fit
+    if step == 3:
+        plt.figure()
+        plt.plot(nS, nI, 'b-', label='Data')
+        plt.plot(S, sum_gaussian(S, *popt), 'r-', lw=3, label='Final Fit')
+        plt.plot(S, peak1, 'm-', lw=3, label='Fit for peak 1')
+        plt.plot(S, gaussian(S, [popt[4], popt[1], popt[8]]) + gaussian(S, [popt[5], popt[1], popt[9]]), 'c-', lw=3, label='Fit for peak 2')
+        plt.xlim(low, high)
+        plt.ylim(0, max(nI) + 2)
+        plt.xlabel('Raman shift (cm$^{-1}$)')
+        plt.ylabel('Intensity (counts)')
+        plt.legend(loc='best')
+        plt.show()
+        print 'When you are satisfied with the peak fit, set step = 3'
+        print 'else, return to step 2 and choose new fitting parameters'
+        exit()
+
+    # Step 4: A summary of the resulting fit
+    if step == 4:
+        ypeak1 = popt[2] + popt[3] + blfit(popt[0])
+        ypeak2 = popt[4] + popt[5] + blfit(popt[1])
+
+        area1 = -np.trapz(S, peak1)
+        area2 = -np.trapz(S, peak2)
+
+        savefile = filename.rstrip('txt')
     
-    plt.figure()
-    plt.plot(S, I + blfit(S), label='data')
-    plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
+        plt.figure()
+        plt.plot(S, I + blfit(S), label='data')
+        plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
 
-    # Annotation code is choppy and doesnt print legibly on large figures, to be fixed
-    #plt.annotate('Peak 1', xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-1))
-    #plt.annotate('Peak 2', xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-1))
-    #plt.annotate('Mean = {0:1.1f}'.format(popt[0]), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-1.7))
-    #plt.annotate('Mean = {0:1.1f}'.format(popt[1]), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-1.7))
-    #plt.annotate('Area = {0:1.1f}'.format(area1), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-2.4))
-    #plt.annotate('Area = {0:1.1f}'.format(area2), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-2.4))
-    #plt.annotate('Height = {0:1.1f}'.format(ypeak1), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-3.1))
-    #plt.annotate('Height = {0:1.1f}'.format(ypeak2), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-3.1))
+        # Annotation code is choppy and doesnt print legibly on large figures, to be fixed
+        #plt.annotate('Peak 1', xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-1))
+        #plt.annotate('Peak 2', xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-1))
+        #plt.annotate('Mean = {0:1.1f}'.format(popt[0]), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-1.7))
+        #plt.annotate('Mean = {0:1.1f}'.format(popt[1]), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-1.7))
+        #plt.annotate('Area = {0:1.1f}'.format(area1), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-2.4))
+        #plt.annotate('Area = {0:1.1f}'.format(area2), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-2.4))
+        #plt.annotate('Height = {0:1.1f}'.format(ypeak1), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-3.1))
+        #plt.annotate('Height = {0:1.1f}'.format(ypeak2), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-3.1))
 
-    plt.xlabel('Raman shift (cm$^{-1}$)')
-    plt.ylabel('Intensity (counts)')
-    plt.savefig(savefile + 'png')
-    plt.show()
+        plt.xlabel('Raman shift (cm$^{-1}$)')
+        plt.ylabel('Intensity (counts)')
+        plt.savefig(savefile + 'png')
+        plt.show()
 
-    print 'These are the diagnols of a 10x10 matrix of the covarience of the 10 fitting parameters.'
-    print np.diag(pcov)
-    print 'The diagonals of this array are representative of the error in each of the 10 fitting parameters.'
-    print 'One standard deviation of this fitting error is defined as the square root of this covarience.'
-    print 'I do not display fitting errors for area as I am not currently sure how to'
-    print 'propogate error through numerical integration.'
-    print 'The error reported in the table of results shown below is representative of one standard deviation.'
-    print 
+        print 'These are the diagnols of a 10x10 matrix of the covarience of the 10 fitting parameters.'
+        print np.diag(pcov)
+        print 'The diagonals of this array are representative of the error in each of the 10 fitting parameters.'
+        print 'One standard deviation of this fitting error is defined as the square root of this covarience.'
+        print 'I do not display fitting errors for area as I am not currently sure how to'
+        print 'propogate error through numerical integration.'
+        print 'The error reported in the table of results shown below is representative of one standard deviation.'
+        print 
 
-    perr = np.sqrt(np.diag(pcov))
+        perr = np.sqrt(np.diag(pcov))
  
-    pk1err = np.sqrt(perr[2]**2. + perr[3]**2 + 2 * pcov[2][3])
-    pk2err = np.sqrt(perr[4]**2. + perr[5]**2 + 2 * pcov[4][5])
+        pk1err = np.sqrt(perr[2]**2. + perr[3]**2 + 2 * pcov[2][3])
+        pk2err = np.sqrt(perr[4]**2. + perr[5]**2 + 2 * pcov[4][5])
 
-    print 'Results'
-    print '======='
-    print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[0], perr[0])
-    print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[1], perr[1])
+        print 'Results'
+        print '======='
+        print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[0], perr[0])
+        print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[1], perr[1])
 
-    print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak1, pk1err)
-    print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak2, pk2err)
+        print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak1, pk1err)
+        print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak2, pk2err)
 
-    print 'Area = {0:1.1f}'.format(area1)
-    print 'Area = {0:1.1f}'.format(area2)
+        print 'Area = {0:1.1f}'.format(area1)
+        print 'Area = {0:1.1f}'.format(area2)
 
-    if output:
-        filename = savefile + 'fit'
+        if output:
+            savefile = savefile + 'fit'
 
-        dn = ''
-        bln = ''
-        for parameter in popt:
-            dn += '{0} '.format(parameter)
-        for parameter in blpars:
-            bln += '{0} '.format(parameter)
+            f = 'Initial guess parameters:\n'
+            f += '=========================\n'
+            f += '                      Peak 1, Peak 2\n'
+            f += 'Peak center =         {0:1.1f}, {1:1.2f}\n'.format(cntr[0], cntr[1])
+            f += 'Amplitude fit 1 =     {0:1.1f}, {1:1.2f}\n'.format(amp1[0], amp1[1])
+            f += 'Amplitude fit 2 =     {0:1.1f}, {1:1.2f}\n'.format(amp2[0], amp2[1])
+            f += 'Standard dev. fit 1 = {0:1.1f}, {1:1.1f}\n'.format(std1[0], std1[1])
+            f += 'Standard dev. fit 2 = {0:1.1f}, {1:1.1f}\n'.format(std2[0], std2[1])
 
-        f = open(filename, 'w')
-        f.write(dn + '\n')
-        f.write(bln)
-        f.close()
+            f += '\nFitted parameters:\n'
+            f += '==================\n'
+            f += '                      Peak 1, Peak 2\n'
+            f += 'Peak center =         {0:1.1f}, {1:1.2f}\n'.format(popt[0], popt[1])
+            f += 'Amplitude fit 1 =     {0:1.1f}, {1:1.2f}\n'.format(popt[2], popt[3])
+            f += 'Amplitude fit 2 =     {0:1.1f}, {1:1.2f}\n'.format(popt[4], popt[5])
+            f += 'Standard dev. fit 1 = {0:1.1f}, {1:1.1f}\n'.format(popt[6], popt[7])
+            f += 'Standard dev. fit 2 = {0:1.1f}, {1:1.1f}\n'.format(popt[8], popt[9])
+
+            f += '\nCalculation output:\n'
+            f += '======================\n'
+            f += 'Mean peak 1 =         {0:1.1f} +/- {1:1.2f}\n'.format(popt[0], perr[0])
+            f += 'Mean peak 2 =         {0:1.1f} +/- {1:1.2f}\n'.format(popt[1], perr[1])
+            f += 'Height peak 1 =       {0:1.1f} +/- {1:1.2f}\n'.format(ypeak1, pk1err)
+            f += 'Height peak 2 =       {0:1.1f} +/- {1:1.2f}\n'.format(ypeak2, pk2err)
+            f += 'Area peak 1 =         {0:1.1f}\n'.format(area1)
+            f += 'Area peak 2 =         {0:1.1f}\n'.format(area2)
+
+            fl = open(savefile, 'w')
+            fl.write(f)
+            fl.close()
+
+ramanfit('testdata.txt', step=4)
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
 These are the diagnols of a 10x10 matrix of the covarience of the 10 fitting parameters.
-[ 0.04039646  0.08229313  0.17798482  0.19491495  0.21465141  0.2091753
-  5.25991655  0.05725264  0.16837761  1.41076473]
+[ 0.04114874  0.08445659  0.15023035  0.16990975  0.18352692  0.190249
+  6.01661207  0.05304215  1.72445141  0.15370495]
 The diagonals of this array are representative of the error in each of the 10 fitting parameters.
 One standard deviation of this fitting error is defined as the square root of this covarience.
 I do not display fitting errors for area as I am not currently sure how to
@@ -209,12 +265,12 @@ The error reported in the table of results shown below is representative of one 
 
 Results
 =======
-Mean = 463.0 $\pm$ 0.20
-Mean = 566.5 $\pm$ 0.29
+Mean = 462.9 $\pm$ 0.20
+Mean = 566.6 $\pm$ 0.29
 Height = 25.4 $\pm$ 0.27
-Height = 23.7 $\pm$ 0.25
-Area = 487.6
-Area = 689.1
+Height = 23.7 $\pm$ 0.24
+Area = 501.0
+Area = 719.6
 #+end_example
 
 * Multiple fit plotting

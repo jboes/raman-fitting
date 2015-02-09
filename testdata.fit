@@ -1,0 +1,26 @@
+Initial guess parameters:
+=========================
+                      Peak 1, Peak 2
+Peak center =         470.0, 560.00
+Amplitude fit 1 =     20.0, 20.00
+Amplitude fit 2 =     20.0, 20.00
+Standard dev. fit 1 = 10.0, 5.0
+Standard dev. fit 2 = 10.0, 5.0
+
+Fitted parameters:
+==================
+                      Peak 1, Peak 2
+Peak center =         462.9, 566.60
+Amplitude fit 1 =     2.6, 12.76
+Amplitude fit 2 =     5.4, 8.80
+Standard dev. fit 1 = 23.6, 6.3
+Standard dev. fit 2 = 25.6, 7.5
+
+Calculation output:
+======================
+Mean peak 1 =         462.9 +/- 0.20
+Mean peak 2 =         566.6 +/- 0.29
+Height peak 1 =       25.4 +/- 0.27
+Height peak 2 =       23.7 +/- 0.24
+Area peak 1 =         501.0
+Area peak 2 =         719.6
