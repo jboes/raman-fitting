@@ -2,7 +2,7 @@
 
 [[./testdata.png]]
 
-#+BEGIN_SRC python
+#+BEGIN_SRC python :tangle ramantools.py
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import erf
@@ -61,39 +61,6 @@ def ramanfit(filename,
 
     # Subtracts the baseline from the intensities
     I -= blfit(S)
-
-    '''
-    # An attempt to find the derivatives based on finitie difference
-    # and use them as starting guesses for fitting params. Needs work.
-
-    dS = S[(S > dlow) & (S < dhigh)]
-    dI = I[(S > dlow) & (S < dhigh)]
-
-    avg = []
-    for x in dS:
-
-        itr = noise
-        avg.append(np.average(dI[(dS > x - itr) & (dS < x + itr)]))
-
-    # 2-point finite difference method to calculate the derivative
-    dyf = [0.0] * len(dS)
-    for i in range(len(avg) - 1):
-        dyf[i] = (avg[i+1] - avg[i])/(dS[i+1] - dS[i])
-        #set last element by backwards difference
-    dyf[-1] = (avg[-1] - avg[-2])/(dS[-1] - dS[-2])
-    dyf = np.array(dyf) * noise
-
-    dyavg = []
-    for x in dS:
-
-        itr = noise
-        dyavg.append(abs(np.average(dyf[(dS > x - itr) & (dS < x + itr)])))
-
-    dyavg = np.array(dyavg)
-
-    der = dS[(dyavg < 0.2)]
-    print der - der[0]
-    '''
 
     # Gaussians will only be fit the the data not used for the baseline
     nS = S[(S > low) & (S < high)]
@@ -175,16 +142,6 @@ def ramanfit(filename,
         plt.plot(S, I + blfit(S), label='data')
         plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
 
-        # Annotation code is choppy and doesnt print legibly on large figures, to be fixed
-        #plt.annotate('Peak 1', xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-1))
-        #plt.annotate('Peak 2', xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-1))
-        #plt.annotate('Mean = {0:1.1f}'.format(popt[0]), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-1.7))
-        #plt.annotate('Mean = {0:1.1f}'.format(popt[1]), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-1.7))
-        #plt.annotate('Area = {0:1.1f}'.format(area1), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-2.4))
-        #plt.annotate('Area = {0:1.1f}'.format(area2), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-2.4))
-        #plt.annotate('Height = {0:1.1f}'.format(ypeak1), xy=(popt[0],ypeak1), xytext=(parguess[0]-25, blfit(popt[1])-3.1))
-        #plt.annotate('Height = {0:1.1f}'.format(ypeak2), xy=(popt[1],ypeak2), xytext=(parguess[1]-25, blfit(popt[1])-3.1))
-
         plt.xlabel('Raman shift (cm$^{-1}$)')
         plt.ylabel('Intensity (counts)')
         plt.savefig(savefile + 'png')
@@ -248,6 +205,12 @@ def ramanfit(filename,
             fl = open(savefile, 'w')
             fl.write(f)
             fl.close()
+#+END_SRC
+
+Here we run the function created above for a test set of data.
+
+#+BEGIN_SRC python
+from ramantools import ramanfit
 
 ramanfit('testdata.txt', step=4)
 #+END_SRC
@@ -273,78 +236,3 @@ Area = 501.0
 Area = 719.6
 #+end_example
 
-* Multiple fit plotting
-
-[[./combined-plot.png]]
-
-#+BEGIN_SRC python
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-
-# Put the name of your data files here
-data_file_name = ['john-data/Ni-Li-2-Fefree-Raman-750mV-07-24-14.txt',
-                  'john-data/Ni-Li-3-Fefree-Raman-750mV-07-24-14.txt',
-                  'john-data/Ni-Cs-2-Fefree-Raman-750mV-07-24-14.txt',
-                  'john-data/Ni-Cs-1-Fefree-Raman-750mV-07-24-14.txt']
-
-def Gaussian(x, pars):
-    A = pars[0]    # amplitude
-    mu = pars[1]   # means
-    sig = pars[2]  # std dev
-    return A * np.exp((-(x - mu)**2.) / ((2*sig)**2.))
-
-def sum_gaussian(x, pars):
-    p = pars
-    g1 = Gaussian(x, [p[2], p[0], p[6]])
-    g2 = Gaussian(x, [p[3], p[0], p[7]])
-    g3 = Gaussian(x, [p[4], p[1], p[8]])
-    g4 = Gaussian(x, [p[5], p[1], p[9]])
-    return g1 + g2 + g3 + g4
-
-# Extracts peak data and fit data
-Sig,I,par,bl = [],[],[],[]
-for f in data_file_name:
-    signal,intensity = np.loadtxt(f, usecols=(0,1), unpack=True)
-    Sig.append(signal)
-    I.append(intensity)
-
-    fit_file_name = f.strip('.txt') + '.fit'
-    
-    fitdata = open(fit_file_name,'r')
-
-    gaussian = fitdata.readline().split()
-    par.append(np.array(map(float, gaussian)))
-
-    baseline = fitdata.readline().split()
-    bl.append(np.poly1d(map(float, baseline)))
-    fitdata.close()
-
-offset = [0,0,70,80]
-cl = ['b','b','g','g']
-
-for i,S in enumerate(Sig):
- 
-    plt.plot(S, I[i]+offset[i],color=cl[i])
-    plt.plot(S,sum_gaussian(S, par[i])+bl[i](S)+offset[i],'r-')
-
-plt.text(Sig[1][-1]-5,I[1][-1]+offset[1]+5,'LiOH',horizontalalignment='right',verticalalignment='bottom')
-plt.text(Sig[3][-1]-5,I[3][-1]+offset[3]+12,'CsOH',horizontalalignment='right',verticalalignment='bottom')
-
-# EDIT THIS TO SHIFT THE POSITON OF THE INDICATOR LINES
-# par[0][0] and par[0][1] are the centers of peak 1 and 2 for the first curve (closest to bottom)
-# par[1][0] and par[1][1] are the centers of peak 1 and 2 for the second curve (next closest to bottom)
-# etc...
-peak1,peak2 = par[0][0], par[0][1] # cm^-1
-
-
-plt.plot([peak1,peak1],[0,300],'k-')
-plt.plot([peak2,peak2],[0,300],'k-')
-
-plt.xlim(250,750)
-plt.ylim(0,300)
-plt.xlabel('Raman shift (cm$^{-1}$)')
-plt.ylabel('Intensity (counts)')
-plt.savefig('combined-plot.png')
-plt.show()
-#+END_SRC
