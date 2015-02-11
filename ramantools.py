@@ -5,31 +5,99 @@ from scipy.special import erf
 from scipy.optimize import curve_fit
 import os
 
-def ramanfit(filename,
-             cntr=(470, 560),
-             amp1=(20, 20),
-             amp2=(20, 20),
-             std1=(10, 5),
-             std2=(10, 5),
-             drange=None,
-             output=True,
-             step=4):
+def dgaussian(filename,
+              cntr=(470.0, 560.0),
+              amp1=(20.0, 20.0),
+              amp2=(20.0, 20.0),
+              std1=(10.0, 5.0),
+              std2=(10.0, 5.0),
+              datarange=None,
+              output=True,
+              step=4):
 
-    # step = 1: Fittings the baseline
-    # step = 2: Choosing initial guess for peaks
-    # step = 3: Evaluate the fit
-    # step = 4: View and save the final figure
+    """Fitting Raman spectra data using the two Gaussian functions
+
+    Currently, the code only supports double Gaussian fitting for
+    two peaks. This will be expanded upon as the need arises.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file containing the data to be analyzed. Data is
+        read in using the numpy.loadtxt function. Data should be separated 
+        into two rows, the first being the wavenumber, the second being
+        signal intensity.
+    cntr : list, optional
+        Initial starting point for the center of each peak in wavenumbers.
+        A float in the list for each peak.
+    amp1 : list, optional
+        Initial starting point for the amplitude of the frist Gaussian.
+        A float in the list for each peak.
+    amp2 : list, optional
+        Initial starting point for the amplitude of the second Gaussian.
+        A float in the list for each peak.
+    std1 : list, optional
+        Initial starting point for the standard deviation of the frist 
+        Gaussian. A float in the list for each peak.
+    std2 : list, optional
+        Initial starting point for the standard deviation of the second
+        Gaussian. A float in the list for each peak.
+    datarange : list, optional
+        This is a list of two floats specifying the range of wavenumbers
+        you want to analyze from the data file. Takes the entire range of
+        data by default.
+    output : bool , optional
+        Whether or not the function returns an output .fit file.
+    step : 1, 2, 3, or 4 : optional
+        Specifies which step of the fitting process the user is working on:
+        step = 1: Fittings the baseline (figure produced)
+        step = 2: Choosing initial guess for peaks (figure produced)
+        step = 3: Evaluate the fit (figure produced)
+        step = 4: View and save the final figure (no figure)
+
+    Returns
+    -------
+    results : array
+        An array of: [center peak 1, center peak 2, 
+                      height peak 1, height peak 2,
+                      area peak 1, area peak 2]
+    fiterror : array
+        An array of the fitting errors for: [center peak 1, center peak 2, 
+                                             height peak 1, height peak 2]
+    popt : array
+        An array of the optimized fitting parameters as output from the
+        scipy.optimize.curve_fit function:
+        Peak # :  1        2
+                 [cntr[0], cntr[1],   # Peak center
+                  amp1[0], amp1[1],   # Amplitude of Gaussian 1
+                  amp2[0], amp2[1],   # Amplitude of Gaussian 2
+                  std1[0], std1[1],   # Standard deviation of Gaussian 1
+                  std2[0], std2[1])   # Standard deviation of Gaussian 2
+    parguess : array
+        An array of the initial fitting parameters:
+        Peak # :  1        2
+                 [cntr[0], cntr[1],   # Peak center
+                  amp1[0], amp1[1],   # Amplitude of Gaussian 1
+                  amp2[0], amp2[1],   # Amplitude of Gaussian 2
+                  std1[0], std1[1],   # Standard deviation of Gaussian 1
+                  std2[0], std2[1])   # Standard deviation of Gaussian 2
+
+    See Also
+    --------
+    scipy.special.erf
+    scipy.optimize.curve_fit
+    """
 
     # This unpacks the data from the text file.
     S, I = np.loadtxt(filename, usecols=(0, 1), unpack=True)
 
-    if drange == None:
-        drange = [min(S), max(S)]
+    if datarange == None:
+        datarange = [min(S), max(S)]
 
     # Define the low and high regions for baseline sampling
     dx = 80.
-    low = drange[0] + dx
-    high = drange[1] - dx
+    low = datarange[0] + dx
+    high = datarange[1] - dx
 
     # Seperate the data points to be used for fitting the baseline
     xbl = np.append(S[(S < low)], S[(S > high)])
@@ -80,19 +148,19 @@ def ramanfit(filename,
     # ----------------------------------------------------------------------
 
     # These are initial guesses of the tuning parameters for the Gaussian fits.
-    #    Peak #: 1    2
-    parguess = (cntr[0], cntr[1],       # Peak center
-                amp1[0], amp1[1],       # Amplitude of peak 1
-                amp2[0], amp2[1],       # Amplitude of peak 2
-                std1[0], std1[1],       # Standard deviation of peak 1
-                std2[0], std2[1])       # Standard deviation of peak 2
+    # Peak # :  1        2
+    parguess = (cntr[0], cntr[1],   # Peak center
+                amp1[0], amp1[1],   # Amplitude of Gaussian 1
+                amp2[0], amp2[1],   # Amplitude of Gaussian 2
+                std1[0], std1[1],   # Standard deviation of Gaussian 1
+                std2[0], std2[1])   # Standard deviation of Gaussian 2
 
     # Step 2: Fitting the curves to the data
     if step == 2:
         plt.figure()
         plt.plot(nS, nI, 'b-', label='Data')
         plt.plot(S, sum_gaussian(S, *parguess), 'g--', lw=3, label='Initial guess')
-        plt.xlim(drange[0], drange[1])
+        plt.xlim(datarange[0], datarange[1])
         plt.ylim(0, max(nI) + 2)
         plt.xlabel('Raman shift (cm$^{-1}$)')
         plt.ylabel('Intensity (counts)')
@@ -140,33 +208,14 @@ def ramanfit(filename,
 
         plt.xlabel('Raman shift (cm$^{-1}$)')
         plt.ylabel('Intensity (counts)')
-        plt.savefig(savefile + 'png')
-        plt.show()
-
-        print 'These are the diagnols of a 10x10 matrix of the covarience of the 10 fitting parameters.'
-        print np.diag(pcov)
-        print 'The diagonals of this array are representative of the error in each of the 10 fitting parameters.'
-        print 'One standard deviation of this fitting error is defined as the square root of this covarience.'
-        print 'I do not display fitting errors for area as I am not currently sure how to'
-        print 'propogate error through numerical integration.'
-        print 'The error reported in the table of results shown below is representative of one standard deviation.'
-        print 
 
         perr = np.sqrt(np.diag(pcov))
  
         pk1err = np.sqrt(perr[2]**2. + perr[3]**2 + 2 * pcov[2][3])
         pk2err = np.sqrt(perr[4]**2. + perr[5]**2 + 2 * pcov[4][5])
 
-        print 'Results'
-        print '======='
-        print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[0], perr[0])
-        print 'Mean = {0:1.1f} $\pm$ {1:1.2f}'.format(popt[1], perr[1])
-
-        print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak1, pk1err)
-        print 'Height = {0:1.1f} $\pm$ {1:1.2f}'.format(ypeak2, pk2err)
-
-        print 'Area = {0:1.1f}'.format(area1)
-        print 'Area = {0:1.1f}'.format(area2)
+        results = np.array([popt[0], popt[1], ypeak1, ypeak2, area1, area2])
+        fiterror = np.array([perr[0], perr[1], pk1err, pk2err])
 
         if output:
             savefile = savefile + 'fit'
@@ -191,13 +240,15 @@ def ramanfit(filename,
 
             f += '\nCalculation output:\n'
             f += '======================\n'
-            f += 'Mean peak 1 =         {0:1.1f} +/- {1:1.2f}\n'.format(popt[0], perr[0])
-            f += 'Mean peak 2 =         {0:1.1f} +/- {1:1.2f}\n'.format(popt[1], perr[1])
-            f += 'Height peak 1 =       {0:1.1f} +/- {1:1.2f}\n'.format(ypeak1, pk1err)
-            f += 'Height peak 2 =       {0:1.1f} +/- {1:1.2f}\n'.format(ypeak2, pk2err)
+            f += 'Mean peak 1 =         {0:1.1f} pm {1:1.2f}\n'.format(popt[0], perr[0])
+            f += 'Mean peak 2 =         {0:1.1f} pm {1:1.2f}\n'.format(popt[1], perr[1])
+            f += 'Height peak 1 =       {0:1.1f} pm {1:1.2f}\n'.format(ypeak1, pk1err)
+            f += 'Height peak 2 =       {0:1.1f} pm {1:1.2f}\n'.format(ypeak2, pk2err)
             f += 'Area peak 1 =         {0:1.1f}\n'.format(area1)
-            f += 'Area peak 2 =         {0:1.1f}\n'.format(area2)
+            f += 'Area peak 2 =         {0:1.1f}'.format(area2)
 
             fl = open(savefile, 'w')
             fl.write(f)
             fl.close()
+
+        return results, fiterror, popt, parguess
