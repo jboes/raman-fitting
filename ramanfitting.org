@@ -4,8 +4,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import erf
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, fsolve
 import os
+from scipy.interpolate import interp1d
+from scipy import interpolate
 
 def dgaussian(filename,
               cntr=(470.0, 560.0),
@@ -132,6 +134,35 @@ def dgaussian(filename,
     nS = S[(S > low) & (S < high)]
     nI = I[(S > low) & (S < high)]
 
+
+    # An attempt to find the derivatives based on finitie difference
+    # and use them as starting guesses for fitting params. Needs work.
+    dS = S[(S > datarange[0] + dx*1.0) & (S < datarange[1] - dx*1.0)]
+    dI = I[(S > datarange[0] + dx*1.0) & (S < datarange[1] - dx*1.0)]
+
+    avg = []
+    for x in dS:
+
+        itr = 20.0
+        avg.append(np.average(dI[(dS > x - itr) & (dS < x + itr)]))
+
+    # 2-point finite difference method to calculate the derivative
+    dyf = [0.0] * len(dS)
+    for i in range(len(avg) - 1):
+        dyf[i] = (avg[i+1] - avg[i])/(dS[i+1] - dS[i])
+        #set last element by backwards difference
+    dyf[-1] = (avg[-1] - avg[-2])/(dS[-1] - dS[-2])
+
+
+    X = np.linspace(min(dS), max(dS), 1000)
+    
+    f2 = interp1d(dS, dyf, kind='cubic')
+    print fsolve(f2, 565)
+
+    plt.plot(dS, dyf, 'bo')
+    plt.plot(X, f2(X))
+    plt.show()
+
     # These are functions which define the types of fit which you could implement
     # Currently, the code only utilizes Gaussians
     # ----------------------------------------------------------------------
@@ -254,6 +285,8 @@ def dgaussian(filename,
             fl.close()
 
         return results, fiterror, popt, parguess
+
+results, fiterror, popt, parguess = dgaussian('testdata.txt', output=True)
 #+END_SRC
 
 [[./testdata.png]]
