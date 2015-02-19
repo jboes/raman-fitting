@@ -183,12 +183,12 @@ def dgaus1p(filename,
 
         savefile = filename.rstrip('txt')
     
-        plt.figure()
-        plt.plot(S, I + blfit(S), label='data')
-        plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
+        #plt.figure()
+        #plt.plot(S, I + blfit(S), label='data')
+        #plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
 
-        plt.xlabel('Raman shift (cm$^{-1}$)')
-        plt.ylabel('Intensity (counts)')
+        #plt.xlabel('Raman shift (cm$^{-1}$)')
+        #plt.ylabel('Intensity (counts)')
 
         perr = np.sqrt(np.diag(pcov))
  
@@ -421,12 +421,12 @@ def dgaus2p(filename,
 
         savefile = filename.rstrip('txt')
     
-        plt.figure()
-        plt.plot(S, I + blfit(S), label='data')
-        plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
+        #plt.figure()
+        #plt.plot(S, I + blfit(S), label='data')
+        #plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
 
-        plt.xlabel('Raman shift (cm$^{-1}$)')
-        plt.ylabel('Intensity (counts)')
+        #plt.xlabel('Raman shift (cm$^{-1}$)')
+        #plt.ylabel('Intensity (counts)')
 
         perr = np.sqrt(np.diag(pcov))
  
