@@ -177,15 +177,6 @@ def dgaus1p(filename,
 
         area1 = -np.trapz(S, peak1)
 
-        savefile = filename.rstrip('txt')
-    
-        plt.figure()
-        plt.plot(S, I + blfit(S), label='data')
-        plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
-
-        plt.xlabel('Raman shift (cm$^{-1}$)')
-        plt.ylabel('Intensity (counts)')
-
         perr = np.sqrt(np.diag(pcov))
  
         pk1err = np.sqrt(perr[1]**2. + perr[2]**2 + 2 * pcov[1][2])
@@ -409,17 +400,7 @@ def dgaus2p(filename,
         area1 = -np.trapz(S, peak1)
         area2 = -np.trapz(S, peak2)
 
-        savefile = filename.rstrip('txt')
-    
-        plt.figure()
-        plt.plot(S, I + blfit(S), label='data')
-        plt.plot(S, sum_gaussian(S, *popt) + blfit(S), 'r-', lw=3, label='fit')
-
-        plt.xlabel('Raman shift (cm$^{-1}$)')
-        plt.ylabel('Intensity (counts)')
-
         perr = np.sqrt(np.diag(pcov))
- 
         pk1err = np.sqrt(perr[2]**2. + perr[3]**2 + 2 * pcov[2][3])
         pk2err = np.sqrt(perr[4]**2. + perr[5]**2 + 2 * pcov[4][5])
 
@@ -432,6 +413,7 @@ def dgaus2p(filename,
                              pk1err, pk2err])
 
         if output:
+            savefile = filename.rstrip('txt')'
             savefile = savefile + 'fit'
 
             f = 'Initial guess parameters:\n'
