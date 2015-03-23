@@ -81,7 +81,7 @@ def dgaus1p(filename,
         datarange = [min(S), max(S)]
 
     # Define the low and high regions for baseline sampling
-    dx = 80.
+    dx = 5.
     low = datarange[0] + dx
     high = datarange[1] - dx
 
@@ -413,7 +413,7 @@ def dgaus2p(filename,
                              pk1err, pk2err])
 
         if output:
-            savefile = filename.rstrip('txt')'
+            savefile = filename.rstrip('txt')
             savefile = savefile + 'fit'
 
             f = 'Initial guess parameters:\n'

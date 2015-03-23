@@ -423,7 +423,7 @@ def dgaus2p(filename,
                              pk1err, pk2err])
 
         if output:
-            savefile = filename.rstrip('txt')'
+            savefile = filename.rstrip('txt')
             savefile = savefile + 'fit'
 
             f = 'Initial guess parameters:\n'
@@ -517,4 +517,3 @@ Height peak 2 =       23.7 $\pm$ 0.24
 Area peak 1 =         501.0
 Area peak 2 =         719.6
 #+end_example
-
